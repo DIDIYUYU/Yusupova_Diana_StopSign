@@ -1,0 +1,26 @@
+name: CI/CD for STOP Sign Detector
+
+on:
+  push:
+    branches: ["main"]  # Триггер на пуш в main
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  test-api:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4  # Клонирует репозиторий
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.9"
+
+      - name: Install dependencies
+        run: |
+          pip install fastapi uvicorn opencv-python numpy python-multipart
+
+      - name: Test API (проверка запуска)
+        run: |
+          python -c "from main import process_image; import cv2; img = cv2.imread('test.jpg', cv2.IMREAD_COLOR); process_image(img)"
