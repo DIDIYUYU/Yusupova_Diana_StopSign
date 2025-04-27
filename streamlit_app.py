@@ -31,3 +31,4 @@ if uploaded_file is not None:
 
         # Отображаем обработанное изображение
         st.image(processed_image, caption="Обработанное изображение", use_container_width=True)
+
