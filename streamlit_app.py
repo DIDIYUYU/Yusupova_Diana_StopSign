@@ -1,34 +1,48 @@
 import streamlit as st
-from main import *
-import numpy as np
-# streamlit_app.py
-import streamlit as st
+import requests
 from PIL import Image
 import numpy as np
-from main import process_image  # Импортируем функцию из main.py
+import io
 
-# Заголовок приложения
+# Настройки API
+API_URL = "https://proekt-dianayusupova.amvera.io/detect"
+
 st.title("Обнаружение дорожного знака СТОП")
+st.write("Загрузите изображение для обнаружения знака СТОП через API")
 
-# Описание
-st.write("Загрузите изображение, и приложение обработает его с помощью нейронной сети.")
-
-# Кнопка для загрузки изображения
 uploaded_file = st.file_uploader("Выберите изображение...", type=["jpg", "jpeg", "png"])
 
 if uploaded_file is not None:
-    # Открываем изображение
+    # Показываем оригинальное изображение
     image = Image.open(uploaded_file)
-    image_array = np.array(image)  # Преобразуем в numpy array
-
-    # Отображаем оригинальное изображение
     st.image(image, caption="Оригинальное изображение", use_container_width=True)
 
-    # Кнопка для обработки изображения
-    if st.button("Обработать изображение"):
-        # Обрабатываем изображение с помощью функции из main.py
-        processed_image = process_image(image_array)
+    if st.button("Обнаружить знак СТОП"):
+        try:
+            # Отправляем файл на API
+            files = {"file": (uploaded_file.name, uploaded_file.getvalue())}
+            response = requests.post(API_URL, files=files)
 
-        # Отображаем обработанное изображение
-        st.image(processed_image, caption="Обработанное изображение", use_container_width=True)
+            if response.status_code == 200:
+                result = response.json()
+                if result["success"]:
+                    # Декодируем полученное изображение
+                    processed_image = Image.open(io.BytesIO(result["image"]))
+                    st.image(processed_image, caption="Результат обработки", use_container_width=True)
+                else:
+                    st.error(f"Ошибка API: {result.get('error', 'Неизвестная ошибка')}")
+            else:
+                st.error(f"Ошибка сервера: {response.status_code}")
 
+        except requests.exceptions.RequestException as e:
+            st.error(f"Ошибка соединения с API: {str(e)}")
+        except Exception as e:
+            st.error(f"Произошла ошибка: {str(e)}")
+
+# Добавляем пояснение работы системы
+st.markdown("""
+**Примечание:** 
+- Изображение отправляется на сервер API для обработки
+- Используется каскадный классификатор Haar для обнаружения знаков
+- Результат возвращается с выделенными областями обнаружения
+""")
