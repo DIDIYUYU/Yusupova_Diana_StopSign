@@ -1,48 +1,26 @@
 import streamlit as st
-import requests
-from PIL import Image
+import cv2
 import numpy as np
-import io
+from PIL import Image
+#1
+st.title("🚦 Обнаружение стоп-знака")
 
-# Настройки API
-API_URL = "https://proekt-dianayusupova.amvera.io/detect"
-
-st.title("Обнаружение дорожного знака СТОП")
-st.write("Загрузите изображение для обнаружения знака СТОП через API")
-
-uploaded_file = st.file_uploader("Выберите изображение...", type=["jpg", "jpeg", "png"])
+uploaded_file = st.file_uploader("Загрузите изображение", type=["jpg", "jpeg", "png"])
 
 if uploaded_file is not None:
-    # Показываем оригинальное изображение
-    image = Image.open(uploaded_file)
-    st.image(image, caption="Оригинальное изображение", use_container_width=True)
+    file_bytes = np.asarray(bytearray(uploaded_file.read()), dtype=np.uint8)
+    img = cv2.imdecode(file_bytes, 1)
+    img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
-    if st.button("Обнаружить знак СТОП"):
-        try:
-            # Отправляем файл на API
-            files = {"file": (uploaded_file.name, uploaded_file.getvalue())}
-            response = requests.post(API_URL, files=files)
+    stop_data = cv2.CascadeClassifier('stop_data.xml')
+    found = stop_data.detectMultiScale(img_gray, minSize=(20, 20))
 
-            if response.status_code == 200:
-                result = response.json()
-                if result["success"]:
-                    # Декодируем полученное изображение
-                    processed_image = Image.open(io.BytesIO(result["image"]))
-                    st.image(processed_image, caption="Результат обработки", use_container_width=True)
-                else:
-                    st.error(f"Ошибка API: {result.get('error', 'Неизвестная ошибка')}")
-            else:
-                st.error(f"Ошибка сервера: {response.status_code}")
+    if len(found) == 0:
+        st.warning("Стоп-знак не найден.")
+    else:
+        for (x, y, width, height) in found:
+            cv2.rectangle(img_rgb, (x, y), (x + width, y + height), (0, 255, 0), 3)
 
-        except requests.exceptions.RequestException as e:
-            st.error(f"Ошибка соединения с API: {str(e)}")
-        except Exception as e:
-            st.error(f"Произошла ошибка: {str(e)}")
-
-# Добавляем пояснение работы системы
-st.markdown("""
-**Примечание:** 
-- Изображение отправляется на сервер API для обработки
-- Используется каскадный классификатор Haar для обнаружения знаков
-- Результат возвращается с выделенными областями обнаружения
-""")
+        st.success(f"Найдено стоп-знаков: {len(found)}")
+        st.image(img_rgb, caption="Результат", use_column_width=True)
